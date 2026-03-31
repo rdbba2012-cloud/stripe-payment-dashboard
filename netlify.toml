@@ -1,0 +1,26 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[dev]
+  publish = "."
+  functions = "netlify/functions"
+  port = 8888
+
+# One-click deploy: Netlify prompts for these during setup
+[template.environment]
+  STRIPE_SECRET_KEY = "Your Stripe Secret Key (find it at https://dashboard.stripe.com/apikeys — starts with sk_live_ or sk_test_)"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "ALLOWALL"
+    Content-Security-Policy = "frame-ancestors *"
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"

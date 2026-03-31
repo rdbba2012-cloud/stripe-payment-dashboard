@@ -1,0 +1,16 @@
+{
+  "name": "stripe-payment-dashboard",
+  "version": "1.0.0",
+  "description": "Stripe payment tracking dashboard for martial arts school",
+  "type": "module",
+  "dependencies": {
+    "stripe": "^17.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "scripts": {
+    "dev": "npx netlify dev",
+    "deploy": "npx netlify deploy --prod"
+  }
+}

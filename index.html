@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Oswald', 'sans-serif'],
+            body: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5',
+              400: '#f87171', 500: '#ef4444', 600: '#dc2626', 700: '#b91c1c',
+              800: '#991b1b', 900: '#7f1d1d',
+            },
+            surface: {
+              950: '#050505', 900: '#0a0a0a', 850: '#0f0f0f', 800: '#141414',
+              750: '#1a1a1a', 700: '#222222', 600: '#2a2a2a', 500: '#404040',
+              400: '#666666', 300: '#999999', 200: '#bbbbbb', 100: '#e0e0e0',
+              50: '#ffffff',
+            },
+            success: { 500: '#22c55e', 600: '#16a34a', 700: '#15803d' },
+            warning: { 500: '#f59e0b', 600: '#d97706' },
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    body { background: #050505; color: #e0e0e0; }
+    .font-display { font-family: 'Oswald', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #404040; }
+
+    @keyframes pulse-red {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+    }
+    .pulse-red { animation: pulse-red 2s infinite; }
+
+    @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in { animation: fade-in 0.3s ease-out; }
+
+    @keyframes slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .animate-slide-in { animation: slide-in-right 0.3s ease-out; }
+
+    .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3); }
+    .card-shadow-red { box-shadow: 0 1px 3px rgba(220,38,38,0.15), 0 4px 12px rgba(220,38,38,0.1); }
+    .card-shadow-green { box-shadow: 0 1px 3px rgba(34,197,94,0.15), 0 4px 12px rgba(34,197,94,0.1); }
+
+    .btn-primary {
+      background: #dc2626;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: scale(1.02); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:focus-visible { outline: 2px solid #f87171; outline-offset: 2px; }
+
+    .btn-ghost {
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.06); }
+    .btn-ghost:active { transform: scale(0.97); }
+    .btn-ghost:focus-visible { outline: 2px solid #f87171; outline-offset: 2px; }
+
+    input, select {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      color: #e0e0e0;
+      transition: border-color 0.15s ease;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #dc2626;
+      box-shadow: 0 0 0 2px rgba(220,38,38,0.15);
+    }
+
+    .tab-active {
+      color: #ffffff;
+      border-bottom: 2px solid #dc2626;
+    }
+    .tab-inactive {
+      color: #666666;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+    .tab-inactive:hover { color: #999999; border-color: #2a2a2a; }
+
+    .row-failed { border-left: 3px solid #dc2626; background: rgba(220, 38, 38, 0.04); }
+    .row-succeeded { border-left: 3px solid transparent; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 9999px; font-size: 11px;
+      font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+    }
+    .badge-success { background: rgba(34,197,94,0.12); color: #22c55e; }
+    .badge-failed { background: rgba(220,38,38,0.12); color: #ef4444; }
+    .badge-warning { background: rgba(245,158,11,0.12); color: #f59e0b; }
+    .badge-critical { background: rgba(220,38,38,0.2); color: #fca5a5; }
+
+    .severity-medium { border-left: 3px solid #f59e0b; }
+    .severity-high { border-left: 3px solid #ef4444; }
+    .severity-critical { border-left: 3px solid #ef4444; animation: pulse-red 2s infinite; }
+
+    .overlay { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+
+    .skeleton {
+      background: linear-gradient(90deg, #1a1a1a 25%, #222222 50%, #1a1a1a 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .grain-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 0; opacity: 0.03;
+    }
+  </style>
+</head>
+<body class="min-h-screen font-body antialiased">
+  <!-- Grain texture overlay -->
+  <svg class="grain-overlay">
+    <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter>
+    <rect width="100%" height="100%" filter="url(#grain)"/>
+  </svg>
+
+  <div id="app" class="relative z-10 min-h-screen">
+    <!-- Header -->
+    <header class="sticky top-0 z-40 border-b border-surface-600" style="background: rgba(5,5,5,0.85); backdrop-filter: blur(12px);">
+      <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded bg-brand-600 flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10h20"/><path d="M6 14h2"/><path d="M12 14h6"/><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+          </div>
+          <h1 id="dashboardTitle" class="font-display text-lg sm:text-xl font-semibold tracking-tight text-white uppercase">Payment Dashboard</h1>
+        </div>
+        <div class="flex items-center gap-3 text-xs text-surface-400">
+          <span id="lastRefreshed">--</span>
+          <button onclick="openSettingsModal()" class="btn-ghost w-8 h-8 rounded-md flex items-center justify-center text-surface-400 hover:text-white" title="Settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <button onclick="refreshAll()" class="btn-ghost px-2.5 py-1.5 rounded-md text-xs font-medium text-surface-200 flex items-center gap-1.5" title="Refresh now">
+            <svg id="refreshIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+            Refresh
+          </button>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <span class="text-surface-400">Auto</span>
+            <input type="checkbox" id="autoRefreshToggle" checked class="sr-only peer">
+            <div class="w-8 h-4 bg-surface-600 rounded-full peer-checked:bg-brand-600 relative transition-colors cursor-pointer">
+              <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <!-- Date range bar -->
+      <div class="max-w-[1600px] mx-auto px-4 sm:px-6 pb-3 flex items-center gap-2 flex-wrap">
+        <div class="flex rounded-md overflow-hidden border border-surface-600" id="dateRangeTabs">
+          <button data-range="today" class="px-3 py-1 text-xs font-medium">Today</button>
+          <button data-range="7d" class="px-3 py-1 text-xs font-medium">7 Days</button>
+          <button data-range="30d" class="px-3 py-1 text-xs font-medium bg-brand-600 text-white">30 Days</button>
+          <button data-range="90d" class="px-3 py-1 text-xs font-medium">90 Days</button>
+          <button data-range="custom" class="px-3 py-1 text-xs font-medium">Custom</button>
+        </div>
+        <div id="customDateRange" class="hidden flex items-center gap-2">
+          <input type="date" id="dateFrom" class="rounded px-2 py-1 text-xs">
+          <span class="text-surface-400 text-xs">to</span>
+          <input type="date" id="dateTo" class="rounded px-2 py-1 text-xs">
+          <button onclick="applyCustomDateRange()" class="btn-primary px-3 py-1 rounded text-xs font-medium text-white">Apply</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="summaryCards">
+        <!-- Total Revenue -->
+        <div class="rounded-xl p-5 card-shadow-green" style="background: #141414;">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-surface-400 uppercase tracking-wider">Revenue (30d)</span>
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: rgba(34,197,94,0.1);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+          <div class="text-2xl font-semibold text-white tracking-tight" id="totalRevenue">
+            <div class="skeleton h-8 w-32 rounded"></div>
+          </div>
+          <div class="text-xs text-surface-400 mt-1" id="revenueSubtext">Loading...</div>
+        </div>
+        <!-- Failed Payments -->
+        <div class="rounded-xl p-5 card-shadow-red" style="background: #141414;">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-surface-400 uppercase tracking-wider">Failed (30d)</span>
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: rgba(220,38,38,0.1);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            </div>
+          </div>
+          <div class="text-2xl font-semibold text-white tracking-tight" id="failedCount">
+            <div class="skeleton h-8 w-24 rounded"></div>
+          </div>
+          <div class="text-xs text-surface-400 mt-1" id="failedSubtext">Loading...</div>
+        </div>
+        <!-- Failure Rate -->
+        <div class="rounded-xl p-5 card-shadow" style="background: #141414;">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-surface-400 uppercase tracking-wider">Failure Rate</span>
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: rgba(245,158,11,0.1);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+          </div>
+          <div class="text-2xl font-semibold text-white tracking-tight flex items-center gap-2" id="failureRate">
+            <div class="skeleton h-8 w-20 rounded"></div>
+          </div>
+          <div class="text-xs text-surface-400 mt-1" id="failureRateSubtext">Loading...</div>
+        </div>
+        <!-- Revenue at Risk -->
+        <div class="rounded-xl p-5 card-shadow-red" style="background: #141414;">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-surface-400 uppercase tracking-wider">Revenue at Risk</span>
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: rgba(220,38,38,0.1);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+          </div>
+          <div class="text-2xl font-semibold text-white tracking-tight" id="revenueAtRisk">
+            <div class="skeleton h-8 w-28 rounded"></div>
+          </div>
+          <div class="text-xs text-surface-400 mt-1" id="riskSubtext">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="flex gap-0 border-b border-surface-600">
+        <button data-tab="payments" class="tab-active px-4 py-2.5 text-sm font-medium cursor-pointer" onclick="switchTab('payments')">Payments</button>
+        <button data-tab="analytics" class="tab-inactive px-4 py-2.5 text-sm font-medium cursor-pointer" onclick="switchTab('analytics')">Analytics</button>
+        <button data-tab="directory" class="tab-inactive px-4 py-2.5 text-sm font-medium cursor-pointer" onclick="switchTab('directory')">Student Directory</button>
+      </div>
+
+      <!-- PAYMENTS TAB -->
+      <div id="tab-payments" class="animate-fade-in">
+        <!-- Urgent Action Panel -->
+        <div id="urgentPanel" class="hidden mb-5 rounded-xl overflow-hidden" style="background: linear-gradient(135deg, rgba(220,38,38,0.12) 0%, rgba(220,38,38,0.04) 100%); border: 1px solid rgba(220,38,38,0.3);">
+          <div class="px-5 py-3 flex items-center gap-2 border-b" style="border-color: rgba(220,38,38,0.2); background: rgba(220,38,38,0.08);">
+            <span class="relative flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-500 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-brand-600"></span>
+            </span>
+            <h2 class="font-display text-sm font-semibold text-white uppercase tracking-tight">Urgent — Contact Required</h2>
+            <span id="urgentCount" class="badge badge-critical ml-1">0</span>
+            <span class="text-xs text-surface-400 ml-auto" id="urgentSubtext">3+ failed attempts &middot; retries exhausted or nearly exhausted</span>
+          </div>
+          <div id="urgentList" class="divide-y" style="divide-color: rgba(220,38,38,0.1);"></div>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+          <div class="flex rounded-md overflow-hidden border border-surface-600" id="statusTabs">
+            <button data-status="all" class="px-3 py-1.5 text-xs font-medium bg-surface-700 text-white" onclick="filterStatus('all')">All</button>
+            <button data-status="succeeded" class="px-3 py-1.5 text-xs font-medium text-surface-400" onclick="filterStatus('succeeded')">Successful</button>
+            <button data-status="failed" class="px-3 py-1.5 text-xs font-medium text-surface-400" onclick="filterStatus('failed')">Failed</button>
+          </div>
+          <div class="relative flex-1 max-w-sm">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchInput" placeholder="Search by name or email..." class="w-full pl-9 pr-3 py-2 rounded-lg text-sm" oninput="onSearchInput()">
+          </div>
+        </div>
+
+        <!-- Payments Table -->
+        <div class="rounded-xl overflow-hidden border border-surface-600" style="background: #141414;">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-surface-600 text-left">
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider cursor-pointer select-none" onclick="sortPayments('created')">
+                    Date <span id="sort-created" class="text-brand-500"></span>
+                  </th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Student / Customer</th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider cursor-pointer select-none" onclick="sortPayments('amount')">
+                    Amount <span id="sort-amount"></span>
+                  </th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Status</th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Reason</th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Retry Status</th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="paymentsTableBody">
+                <tr><td colspan="7" class="px-4 py-12 text-center text-surface-400">
+                  <div class="flex flex-col items-center gap-2">
+                    <div class="skeleton h-4 w-64 rounded"></div>
+                    <div class="skeleton h-4 w-48 rounded"></div>
+                    <div class="skeleton h-4 w-56 rounded"></div>
+                  </div>
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Load More -->
+          <div id="loadMoreContainer" class="hidden border-t border-surface-600 px-4 py-3 text-center">
+            <button onclick="loadMorePayments()" class="btn-ghost px-4 py-2 rounded-lg text-sm font-medium text-surface-300">
+              Load More Payments
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS TAB -->
+      <div id="tab-analytics" class="hidden animate-fade-in">
+        <!-- Repeat Offenders -->
+        <div class="mb-6">
+          <h2 class="font-display text-lg font-semibold text-white uppercase tracking-tight mb-3 flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Repeat Offenders
+          </h2>
+          <div id="repeatOffendersPanel" class="space-y-2">
+            <div class="rounded-lg p-4 skeleton h-16"></div>
+          </div>
+          <p id="noRepeatOffenders" class="hidden text-sm text-surface-400 italic py-4">No repeat offenders detected in the last 90 days.</p>
+        </div>
+
+        <!-- Top Failure Reasons -->
+        <div class="mb-6">
+          <h2 class="font-display text-lg font-semibold text-white uppercase tracking-tight mb-3">Top Failure Reasons</h2>
+          <div id="failureReasonsPanel" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div class="skeleton h-20 rounded-lg"></div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Failures by Day of Week -->
+          <div class="rounded-xl p-5 border border-surface-600" style="background: #141414;">
+            <h3 class="font-display text-sm font-semibold text-white uppercase tracking-tight mb-4">Failures by Day of Week</h3>
+            <div class="relative h-52">
+              <canvas id="dayOfWeekChart"></canvas>
+            </div>
+          </div>
+          <!-- Monthly Revenue Trend -->
+          <div class="rounded-xl p-5 border border-surface-600" style="background: #141414;">
+            <h3 class="font-display text-sm font-semibold text-white uppercase tracking-tight mb-4">Monthly Revenue & Failures</h3>
+            <div class="relative h-52">
+              <canvas id="monthlyChart"></canvas>
+            </div>
+          </div>
+          <!-- Failure Rate Trend -->
+          <div class="rounded-xl p-5 border border-surface-600 lg:col-span-2" style="background: #141414;">
+            <h3 class="font-display text-sm font-semibold text-white uppercase tracking-tight mb-4">Weekly Failure Rate Trend</h3>
+            <div class="relative h-52">
+              <canvas id="weeklyChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STUDENT DIRECTORY TAB -->
+      <div id="tab-directory" class="hidden animate-fade-in">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+          <div class="relative flex-1 max-w-sm">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="directorySearch" placeholder="Search directory..." class="w-full pl-9 pr-3 py-2 rounded-lg text-sm" oninput="renderDirectory()">
+          </div>
+          <div class="flex gap-2">
+            <button onclick="openAddMapping()" class="btn-primary px-3 py-2 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Mapping
+            </button>
+            <button onclick="exportMappings()" class="btn-ghost px-3 py-2 rounded-lg text-xs font-medium text-surface-300 border border-surface-600 flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+            <label class="btn-ghost px-3 py-2 rounded-lg text-xs font-medium text-surface-300 border border-surface-600 flex items-center gap-1.5 cursor-pointer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import
+              <input type="file" accept=".json" class="hidden" onchange="importMappings(event)">
+            </label>
+          </div>
+        </div>
+
+        <!-- Directory Table -->
+        <div class="rounded-xl overflow-hidden border border-surface-600" style="background: #141414;">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-surface-600 text-left">
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Stripe Customer</th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Student Name</th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Parent Email</th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Parent Name</th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Notes</th>
+                  <th class="px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wider text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="directoryTableBody">
+                <tr><td colspan="6" class="px-4 py-8 text-center text-surface-400 text-sm">Loading customers...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Communication Modal (slide-over) -->
+  <div id="commModal" class="fixed inset-0 z-50 hidden">
+    <div class="overlay absolute inset-0" onclick="closeCommModal()"></div>
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-lg animate-slide-in" style="background: #0f0f0f; border-left: 1px solid #2a2a2a;">
+      <div class="flex flex-col h-full">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-surface-600">
+          <h2 class="font-display text-lg font-semibold text-white uppercase tracking-tight">Contact Student</h2>
+          <button onclick="closeCommModal()" class="btn-ghost w-8 h-8 rounded-lg flex items-center justify-center text-surface-400">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4" id="commModalContent">
+          <!-- Filled dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Mapping Modal -->
+  <div id="mappingModal" class="fixed inset-0 z-50 hidden">
+    <div class="overlay absolute inset-0" onclick="closeMappingModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="w-full max-w-md rounded-xl p-6 animate-fade-in" style="background: #141414; border: 1px solid #2a2a2a;">
+        <h2 class="font-display text-lg font-semibold text-white uppercase tracking-tight mb-4" id="mappingModalTitle">Add Student Mapping</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Stripe Customer</label>
+            <select id="mappingCustomerId" class="w-full px-3 py-2 rounded-lg text-sm">
+              <option value="">Select a customer...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Student Name</label>
+            <input type="text" id="mappingStudentName" class="w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. Jimmy Smith">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Parent Email</label>
+            <input type="email" id="mappingParentEmail" class="w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. john@email.com">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Parent Name</label>
+            <input type="text" id="mappingParentName" class="w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. John Smith">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Notes</label>
+            <input type="text" id="mappingNotes" class="w-full px-3 py-2 rounded-lg text-sm" placeholder="Optional notes...">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 mt-5">
+          <button onclick="closeMappingModal()" class="btn-ghost px-4 py-2 rounded-lg text-sm font-medium text-surface-300">Cancel</button>
+          <button onclick="saveMapping()" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold text-white">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="fixed inset-0 z-50 hidden">
+    <div class="overlay absolute inset-0" onclick="closeSettingsModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="w-full max-w-md rounded-xl p-6 animate-fade-in" style="background: #141414; border: 1px solid #2a2a2a;">
+        <h2 class="font-display text-lg font-semibold text-white uppercase tracking-tight mb-4">Dashboard Settings</h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">School / Business Name</label>
+            <input type="text" id="settingsSchoolName" class="w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. Elite Martial Arts Academy">
+            <p class="text-[10px] text-surface-500 mt-1">Appears in the header and communication templates</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Currency</label>
+            <select id="settingsCurrency" class="w-full px-3 py-2 rounded-lg text-sm">
+              <option value="gbp">GBP (£)</option>
+              <option value="usd">USD ($)</option>
+              <option value="eur">EUR (€)</option>
+              <option value="aud">AUD (A$)</option>
+              <option value="cad">CAD (C$)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Max Stripe Retries</label>
+            <select id="settingsMaxRetries" class="w-full px-3 py-2 rounded-lg text-sm">
+              <option value="3">3 retries</option>
+              <option value="4" selected>4 retries (Stripe default)</option>
+              <option value="5">5 retries</option>
+              <option value="6">6 retries</option>
+            </select>
+            <p class="text-[10px] text-surface-500 mt-1">Match this to your Stripe billing retry settings</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Urgent Alert Threshold</label>
+            <select id="settingsUrgentThreshold" class="w-full px-3 py-2 rounded-lg text-sm">
+              <option value="2">2+ failed attempts</option>
+              <option value="3" selected>3+ failed attempts</option>
+              <option value="4">4+ failed attempts (retries exhausted only)</option>
+            </select>
+            <p class="text-[10px] text-surface-500 mt-1">When a failed payment appears in the urgent contact panel</p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 mt-5">
+          <button onclick="closeSettingsModal()" class="btn-ghost px-4 py-2 rounded-lg text-sm font-medium text-surface-300">Cancel</button>
+          <button onclick="saveSettings()" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold text-white">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
+
+  <script>
+    // ─── STATE ─────────────────────────────────────────────────
+    const state = {
+      payments: [],
+      allPayments: [],
+      customers: [],
+      analytics: null,
+      mappings: JSON.parse(localStorage.getItem('stripe_student_mappings') || '{}'),
+      templates: JSON.parse(localStorage.getItem('stripe_comm_templates') || 'null') || getDefaultTemplates(),
+      settings: JSON.parse(localStorage.getItem('stripe_dashboard_settings') || 'null') || {
+        schoolName: '',
+        currency: 'gbp',
+        maxRetries: 4,
+        urgentThreshold: 3,
+      },
+      filters: { dateRange: '30d', status: 'all', search: '', from: null, to: null },
+      sort: { field: 'created', dir: 'desc' },
+      nextCursor: null,
+      loading: false,
+      editingMapping: null,
+      autoRefresh: true,
+      refreshTimer: null,
+    };
+
+    function getDefaultTemplates() {
+      return {
+        first_failure: {
+          subject: "Payment Issue - {{studentName}}'s Tuition",
+          body: "Hi {{parentName}},\n\nWe noticed that the payment of {{amount}} for {{studentName}}'s tuition on {{date}} didn't go through. This can happen for a variety of reasons -- no worries at all.\n\nCould you please check your payment method on file and let us know if you need any help updating it?\n\nThank you,\n[Your School Name]"
+        },
+        second_failure: {
+          subject: "Action Needed - {{studentName}}'s Tuition Payment",
+          body: "Hi {{parentName}},\n\nThis is a follow-up regarding {{studentName}}'s tuition. We've now had two unsuccessful payment attempts, the most recent on {{date}} for {{amount}}.\n\nTo avoid any interruption to {{studentName}}'s training, please update your payment information at your earliest convenience. If you're experiencing any difficulties, we're happy to discuss options.\n\nPlease reply to this email or give us a call.\n\nThank you,\n[Your School Name]"
+        },
+        third_plus_failure: {
+          subject: "Urgent: {{studentName}}'s Account Requires Attention",
+          body: "Hi {{parentName}},\n\nWe've now had {{failCount}} unsuccessful payment attempts for {{studentName}}'s tuition, totalling {{totalOwed}} in outstanding fees.\n\nWe value {{studentName}} as a student and want to keep them training with us. However, we do need to resolve this payment issue promptly.\n\nPlease contact us within the next 48 hours so we can find a solution together. If we don't hear from you, we may need to pause {{studentName}}'s enrolment until the balance is cleared.\n\nThank you for your understanding,\n[Your School Name]"
+        }
+      };
+    }
+
+    // ─── HELPERS ───────────────────────────────────────────────
+    function formatCurrency(amount, currency = 'gbp') {
+      return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency.toUpperCase() }).format(amount / 100);
+    }
+
+    function formatDate(timestamp) {
+      return new Date(timestamp * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function formatDateTime(timestamp) {
+      return new Date(timestamp * 1000).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function getDateRange() {
+      const now = new Date();
+      let from, to;
+      to = now.toISOString().split('T')[0];
+      switch (state.filters.dateRange) {
+        case 'today':
+          from = to;
+          break;
+        case '7d':
+          from = new Date(now - 7 * 86400000).toISOString().split('T')[0];
+          break;
+        case '30d':
+          from = new Date(now - 30 * 86400000).toISOString().split('T')[0];
+          break;
+        case '90d':
+          from = new Date(now - 90 * 86400000).toISOString().split('T')[0];
+          break;
+        case 'custom':
+          from = state.filters.from;
+          to = state.filters.to;
+          break;
+      }
+      return { from, to };
+    }
+
+    function getStudentInfo(payment) {
+      const mapping = state.mappings[payment.customerId];
+      return {
+        studentName: mapping?.studentName || payment.customerName || 'Unknown',
+        parentEmail: mapping?.parentEmail || payment.customerEmail || '',
+        parentName: mapping?.parentName || payment.customerName || 'Unknown',
+        isMapped: !!mapping,
+      };
+    }
+
+    function getFailCountForCustomer(customerId) {
+      return state.allPayments.filter(p => p.customerId === customerId && p.status === 'failed').length;
+    }
+
+    function saveMappings() {
+      localStorage.setItem('stripe_student_mappings', JSON.stringify(state.mappings));
+    }
+
+    function saveTemplates() {
+      localStorage.setItem('stripe_comm_templates', JSON.stringify(state.templates));
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const bg = type === 'success' ? 'rgba(34,197,94,0.15)' : type === 'error' ? 'rgba(220,38,38,0.15)' : 'rgba(245,158,11,0.15)';
+      const border = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#f59e0b';
+      toast.className = 'animate-fade-in rounded-lg px-4 py-3 text-sm font-medium text-white';
+      toast.style.cssText = `background: ${bg}; border: 1px solid ${border}; backdrop-filter: blur(8px);`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    function formatFailureReason(code) {
+      const reasons = {
+        card_declined: 'Card Declined',
+        insufficient_funds: 'Insufficient Funds',
+        expired_card: 'Expired Card',
+        incorrect_cvc: 'Incorrect CVC',
+        processing_error: 'Processing Error',
+        lost_card: 'Lost Card',
+        stolen_card: 'Stolen Card',
+        generic_decline: 'Generic Decline',
+        fraudulent: 'Suspected Fraud',
+        authentication_required: 'Auth Required',
+      };
+      return reasons[code] || (code ? code.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '');
+    }
+
+    function renderRetryCell(payment) {
+      const attempts = payment.attemptCount || 1;
+      const maxRetries = payment.maxRetries || state.settings.maxRetries || 4;
+      const remaining = payment.retriesRemaining ?? Math.max(0, maxRetries - attempts);
+      const nextRetry = payment.nextRetryDate;
+      const allUsed = remaining <= 0;
+
+      // Progress dots: filled = used, empty = remaining
+      const dots = [];
+      for (let i = 0; i < maxRetries; i++) {
+        if (i < attempts) {
+          dots.push(`<span class="inline-block w-2 h-2 rounded-full ${allUsed && i === maxRetries - 1 ? 'bg-brand-500' : 'bg-brand-400'}" title="Attempt ${i + 1} - Failed"></span>`);
+        } else {
+          dots.push(`<span class="inline-block w-2 h-2 rounded-full bg-surface-600" title="Attempt ${i + 1} - Pending"></span>`);
+        }
+      }
+
+      let retryDateHtml = '';
+      if (nextRetry) {
+        const retryDate = new Date(nextRetry * 1000);
+        const now = new Date();
+        const daysUntil = Math.ceil((retryDate - now) / 86400000);
+        const dateStr = retryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        const timeStr = retryDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        const urgencyClass = daysUntil <= 1 ? 'text-warning-500' : 'text-surface-300';
+        retryDateHtml = `<div class="${urgencyClass} text-[11px] mt-0.5" title="Next automatic retry">
+          <svg class="inline -mt-0.5 mr-0.5" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${dateStr}, ${timeStr}${daysUntil <= 1 ? ' (tomorrow)' : daysUntil <= 0 ? ' (today)' : ''}
+        </div>`;
+      }
+
+      if (allUsed) {
+        return `<div>
+          <div class="flex items-center gap-1">${dots.join('')}</div>
+          <div class="text-[11px] text-brand-400 font-medium mt-0.5">All ${maxRetries} retries used</div>
+          <div class="text-[10px] text-surface-500">Manual action needed</div>
+        </div>`;
+      }
+
+      return `<div>
+        <div class="flex items-center gap-1">${dots.join('')}</div>
+        <div class="text-[11px] text-surface-300 mt-0.5">${attempts}/${maxRetries} attempts &middot; <span class="text-surface-200 font-medium">${remaining} left</span></div>
+        ${retryDateHtml}
+      </div>`;
+    }
+
+    // ─── API ──────────────────────────────────────────────────
+    async function fetchPayments(cursor = null) {
+      const { from, to } = getDateRange();
+      const params = new URLSearchParams();
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      if (cursor) params.set('cursor', cursor);
+      params.set('limit', '100');
+
+      const res = await fetch(`/api/payments?${params}`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    async function fetchCustomers(search = '') {
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      params.set('limit', '100');
+      const res = await fetch(`/api/customers?${params}`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    async function fetchAnalytics() {
+      const res = await fetch('/api/analytics');
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    // ─── RENDER: SUMMARY CARDS ────────────────────────────────
+    function renderSummaryCards() {
+      const a = state.analytics;
+      if (!a) return;
+      const s = a.summary;
+
+      document.getElementById('totalRevenue').textContent = formatCurrency(s.totalRevenue30d);
+      document.getElementById('revenueSubtext').textContent = `${s.totalSucceeded30d} successful payments`;
+
+      document.getElementById('failedCount').innerHTML = `${s.totalFailed30d} <span class="text-sm font-normal text-surface-400">(${formatCurrency(s.failedAmount30d)})</span>`;
+      document.getElementById('failedSubtext').textContent = `out of ${s.totalCharges30d} total charges`;
+
+      const rate = (s.failureRate30d * 100).toFixed(1);
+      const trend = s.failureRateTrend;
+      const trendIcon = trend > 0 ? '&#9650;' : trend < 0 ? '&#9660;' : '';
+      const trendColor = trend > 0 ? 'text-brand-400' : trend < 0 ? 'text-success-500' : 'text-surface-400';
+      const trendText = Math.abs(trend * 100).toFixed(1);
+      document.getElementById('failureRate').innerHTML = `${rate}% <span class="text-sm ${trendColor}">${trendIcon} ${trendText}%</span>`;
+      document.getElementById('failureRateSubtext').textContent = 'vs prior 30 days';
+
+      document.getElementById('revenueAtRisk').textContent = formatCurrency(s.revenueAtRisk);
+      document.getElementById('riskSubtext').textContent = 'failed payment amount (30d)';
+    }
+
+    // ─── RENDER: PAYMENTS TABLE ───────────────────────────────
+    function getFilteredPayments() {
+      let filtered = [...state.allPayments];
+
+      if (state.filters.status !== 'all') {
+        filtered = filtered.filter(p => p.status === state.filters.status);
+      }
+      if (state.filters.search) {
+        const q = state.filters.search.toLowerCase();
+        filtered = filtered.filter(p => {
+          const info = getStudentInfo(p);
+          return info.studentName.toLowerCase().includes(q) ||
+                 info.parentEmail.toLowerCase().includes(q) ||
+                 info.parentName.toLowerCase().includes(q) ||
+                 (p.customerName || '').toLowerCase().includes(q) ||
+                 (p.customerEmail || '').toLowerCase().includes(q);
+        });
+      }
+
+      // Sort
+      filtered.sort((a, b) => {
+        let va = a[state.sort.field], vb = b[state.sort.field];
+        if (state.sort.dir === 'desc') [va, vb] = [vb, va];
+        return va > vb ? 1 : va < vb ? -1 : 0;
+      });
+
+      return filtered;
+    }
+
+    function renderPaymentsTable() {
+      const tbody = document.getElementById('paymentsTableBody');
+      const payments = getFilteredPayments();
+
+      if (payments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-12 text-center text-surface-400">
+          <div class="flex flex-col items-center gap-1">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-surface-500 mb-2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <p class="font-medium">No payments found</p>
+            <p class="text-xs">Try adjusting your filters or date range</p>
+          </div>
+        </td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = payments.map(p => {
+        const info = getStudentInfo(p);
+        const isFailed = p.status === 'failed';
+        const failCount = isFailed ? getFailCountForCustomer(p.customerId) : 0;
+
+        return `<tr class="${isFailed ? 'row-failed' : 'row-succeeded'}">
+          <td class="px-4 py-3 text-surface-200 whitespace-nowrap">${formatDateTime(p.created)}</td>
+          <td class="px-4 py-3">
+            <div class="flex flex-col">
+              <span class="text-surface-100 font-medium">${escapeHtml(info.studentName)}</span>
+              <span class="text-xs text-surface-400">${escapeHtml(info.parentEmail || p.customerEmail || '--')}</span>
+              ${!info.isMapped ? '<span class="text-[10px] text-warning-500 font-medium uppercase tracking-wider">Unmapped</span>' : ''}
+            </div>
+          </td>
+          <td class="px-4 py-3 text-surface-100 font-medium whitespace-nowrap">${formatCurrency(p.amount, p.currency)}</td>
+          <td class="px-4 py-3">
+            <span class="badge ${isFailed ? 'badge-failed' : 'badge-success'}">
+              ${isFailed ? '&#10005; Failed' : '&#10003; Paid'}
+            </span>
+            ${failCount >= 3 ? `<span class="badge badge-critical ml-1">${failCount}x</span>` : failCount >= 2 ? `<span class="badge badge-warning ml-1">${failCount}x</span>` : ''}
+          </td>
+          <td class="px-4 py-3 text-xs text-surface-400">${isFailed ? formatFailureReason(p.failureCode) : '--'}</td>
+          <td class="px-4 py-3 whitespace-nowrap">${isFailed ? renderRetryCell(p) : '<span class="text-xs text-surface-500">--</span>'}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            ${isFailed ? `<button onclick="openCommModal('${p.customerId}', ${p.amount}, ${p.created}, '${p.currency}')" class="btn-ghost w-8 h-8 rounded-lg inline-flex items-center justify-center text-surface-400 hover:text-brand-400" title="Contact">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </button>` : ''}
+            <button onclick="openEditMapping('${p.customerId}', '${escapeHtml(p.customerName || '')}', '${escapeHtml(p.customerEmail || '')}')" class="btn-ghost w-8 h-8 rounded-lg inline-flex items-center justify-center text-surface-400 hover:text-white" title="Edit mapping">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+
+      // Show/hide load more
+      const loadMore = document.getElementById('loadMoreContainer');
+      loadMore.classList.toggle('hidden', !state.nextCursor);
+    }
+
+    function renderUrgentPanel() {
+      const panel = document.getElementById('urgentPanel');
+      const list = document.getElementById('urgentList');
+      const countBadge = document.getElementById('urgentCount');
+
+      // Find failed payments with 3+ attempts (retries nearly or fully exhausted)
+      const urgentPayments = [];
+      const seenCustomers = new Set();
+
+      // Group by customer -- show each customer once with their worst payment
+      for (const p of state.allPayments) {
+        if (p.status !== 'failed' || (p.attemptCount || 0) < state.settings.urgentThreshold) continue;
+        if (seenCustomers.has(p.customerId)) continue;
+        seenCustomers.add(p.customerId);
+        urgentPayments.push(p);
+      }
+
+      // Sort: fully exhausted first, then by attempt count desc
+      urgentPayments.sort((a, b) => {
+        const aExhausted = (a.retriesRemaining || 0) === 0 ? 1 : 0;
+        const bExhausted = (b.retriesRemaining || 0) === 0 ? 1 : 0;
+        if (bExhausted !== aExhausted) return bExhausted - aExhausted;
+        return (b.attemptCount || 0) - (a.attemptCount || 0);
+      });
+
+      if (urgentPayments.length === 0) {
+        panel.classList.add('hidden');
+        return;
+      }
+
+      panel.classList.remove('hidden');
+      countBadge.textContent = urgentPayments.length;
+      document.getElementById('urgentSubtext').textContent = `${state.settings.urgentThreshold}+ failed attempts · retries exhausted or nearly exhausted`;
+
+      list.innerHTML = urgentPayments.map(p => {
+        const info = getStudentInfo(p);
+        const totalFailed = state.allPayments
+          .filter(x => x.customerId === p.customerId && x.status === 'failed')
+          .reduce((sum, x) => sum + x.amount, 0);
+        const failCount = getFailCountForCustomer(p.customerId);
+        const exhausted = (p.retriesRemaining || 0) === 0;
+        const attempts = p.attemptCount || 0;
+        const maxRetries = p.maxRetries || 4;
+
+        // Retry dots
+        const dots = [];
+        for (let i = 0; i < maxRetries; i++) {
+          dots.push(i < attempts
+            ? '<span class="inline-block w-2 h-2 rounded-full bg-brand-500"></span>'
+            : '<span class="inline-block w-2 h-2 rounded-full bg-surface-600"></span>');
+        }
+
+        let retryInfo = '';
+        if (exhausted) {
+          retryInfo = '<span class="text-brand-400 font-semibold">All retries exhausted</span>';
+        } else if (p.nextRetryDate) {
+          const d = new Date(p.nextRetryDate * 1000);
+          retryInfo = `<span class="text-warning-500">Next retry: ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}, ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>`;
+        } else {
+          retryInfo = `<span class="text-surface-400">${attempts}/${maxRetries} attempts used</span>`;
+        }
+
+        return `<div class="px-5 py-3 flex items-center gap-4 hover:bg-white/[0.02]">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-white">${escapeHtml(info.studentName)}</span>
+              ${exhausted ? '<span class="badge badge-critical">Exhausted</span>' : `<span class="badge badge-warning">${attempts}/${maxRetries} attempts</span>`}
+              ${failCount >= 3 ? `<span class="badge badge-failed">${failCount} total failures</span>` : ''}
+            </div>
+            <div class="flex items-center gap-3 mt-1 text-xs">
+              <span class="text-surface-400">${escapeHtml(info.parentEmail || p.customerEmail || 'No email')}</span>
+              <span class="text-surface-500">&middot;</span>
+              <span class="text-surface-400">Owes ${formatCurrency(totalFailed, p.currency)}</span>
+              <span class="text-surface-500">&middot;</span>
+              <span class="text-surface-400">Last failed ${formatDate(p.created)}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">${dots.join('')}</div>
+          <div class="text-xs shrink-0">${retryInfo}</div>
+          <button onclick="openCommModal('${p.customerId}', ${p.amount}, ${p.created}, '${p.currency}')" class="btn-primary px-3 py-1.5 rounded-lg text-xs font-semibold text-white shrink-0 flex items-center gap-1.5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Contact
+          </button>
+        </div>`;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ─── RENDER: ANALYTICS ────────────────────────────────────
+    let chartInstances = {};
+
+    function renderAnalytics() {
+      const a = state.analytics;
+      if (!a) return;
+
+      // Repeat Offenders
+      const panel = document.getElementById('repeatOffendersPanel');
+      const noRepeat = document.getElementById('noRepeatOffenders');
+
+      if (a.repeatOffenders.length === 0) {
+        panel.innerHTML = '';
+        noRepeat.classList.remove('hidden');
+      } else {
+        noRepeat.classList.add('hidden');
+        panel.innerHTML = a.repeatOffenders.map(o => {
+          const mapping = state.mappings[o.customerId];
+          const name = mapping?.studentName || o.customerName || 'Unknown';
+          const email = mapping?.parentEmail || o.customerEmail || '';
+          return `<div class="rounded-lg p-4 severity-${o.severity} cursor-pointer ${o.severity === 'critical' ? 'pulse-red' : ''}" style="background: #1a1a1a;" onclick="this.querySelector('.detail').classList.toggle('hidden')">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="font-medium text-white">${escapeHtml(name)}</span>
+                <span class="text-xs text-surface-400 ml-2">${escapeHtml(email)}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="badge ${o.severity === 'critical' ? 'badge-critical' : o.severity === 'high' ? 'badge-failed' : 'badge-warning'}">${o.failCount} failures</span>
+                <span class="text-xs text-surface-400">${formatCurrency(o.totalFailedAmount)}</span>
+                <button onclick="event.stopPropagation(); openCommModal('${o.customerId}', ${o.totalFailedAmount}, ${o.lastFailed})" class="btn-ghost w-7 h-7 rounded inline-flex items-center justify-center text-surface-400 hover:text-brand-400" title="Contact">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="detail hidden mt-3 pt-3 border-t border-surface-600">
+              <div class="space-y-1.5">
+                ${o.failures.sort((a,b) => b.date - a.date).map(f => `
+                  <div class="flex items-center gap-3 text-xs">
+                    <span class="text-surface-400">${formatDate(f.date)}</span>
+                    <span class="text-surface-200">${formatCurrency(f.amount)}</span>
+                    <span class="text-brand-400">${formatFailureReason(f.failureCode)}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+
+      // Top Failure Reasons
+      const reasonsPanel = document.getElementById('failureReasonsPanel');
+      if (a.topFailureReasons.length === 0) {
+        reasonsPanel.innerHTML = '<p class="text-sm text-surface-400 italic col-span-full">No failures recorded.</p>';
+      } else {
+        reasonsPanel.innerHTML = a.topFailureReasons.map(r => `
+          <div class="rounded-lg p-3 border border-surface-600" style="background: #1a1a1a;">
+            <div class="text-xl font-semibold text-brand-400">${r.count}</div>
+            <div class="text-xs text-surface-300 mt-0.5">${formatFailureReason(r.reason)}</div>
+          </div>
+        `).join('');
+      }
+
+      // Charts
+      renderDayOfWeekChart(a.failuresByDay);
+      renderMonthlyChart(a.monthlyTrend);
+      renderWeeklyChart(a.weeklyTrend);
+    }
+
+    function renderDayOfWeekChart(data) {
+      if (chartInstances.dayOfWeek) chartInstances.dayOfWeek.destroy();
+      const ctx = document.getElementById('dayOfWeekChart').getContext('2d');
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const values = days.map(d => data[d] || 0);
+      const maxVal = Math.max(...values);
+
+      chartInstances.dayOfWeek = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: days,
+          datasets: [{
+            data: values,
+            backgroundColor: values.map(v => v === maxVal && v > 0 ? 'rgba(220,38,38,0.7)' : 'rgba(220,38,38,0.3)'),
+            borderColor: values.map(v => v === maxVal && v > 0 ? '#dc2626' : 'rgba(220,38,38,0.5)'),
+            borderWidth: 1,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#666', font: { size: 11 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#666', font: { size: 11 }, precision: 0 } },
+          }
+        }
+      });
+    }
+
+    function renderMonthlyChart(data) {
+      if (chartInstances.monthly) chartInstances.monthly.destroy();
+      const ctx = document.getElementById('monthlyChart').getContext('2d');
+
+      chartInstances.monthly = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.month),
+          datasets: [
+            {
+              label: 'Revenue',
+              data: data.map(d => d.revenue / 100),
+              backgroundColor: 'rgba(34,197,94,0.3)',
+              borderColor: '#22c55e',
+              borderWidth: 1,
+              borderRadius: 4,
+              yAxisID: 'y',
+            },
+            {
+              label: 'Failures',
+              type: 'line',
+              data: data.map(d => d.failures),
+              borderColor: '#ef4444',
+              backgroundColor: 'rgba(239,68,68,0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 3,
+              pointBackgroundColor: '#ef4444',
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#999', font: { size: 11 } } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#666', font: { size: 11 } } },
+            y: { position: 'left', grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#22c55e', font: { size: 11 }, callback: v => '£' + v } },
+            y1: { position: 'right', grid: { display: false }, ticks: { color: '#ef4444', font: { size: 11 }, precision: 0 } },
+          }
+        }
+      });
+    }
+
+    function renderWeeklyChart(data) {
+      if (chartInstances.weekly) chartInstances.weekly.destroy();
+      const ctx = document.getElementById('weeklyChart').getContext('2d');
+
+      // 4-week moving average
+      const rates = data.map(d => d.failureRate * 100);
+      const movingAvg = rates.map((_, i) => {
+        const start = Math.max(0, i - 3);
+        const slice = rates.slice(start, i + 1);
+        return slice.reduce((a, b) => a + b, 0) / slice.length;
+      });
+
+      chartInstances.weekly = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.week),
+          datasets: [
+            {
+              label: 'Failure Rate %',
+              data: rates,
+              borderColor: 'rgba(220,38,38,0.5)',
+              backgroundColor: 'rgba(220,38,38,0.05)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 2,
+              pointBackgroundColor: '#dc2626',
+            },
+            {
+              label: '4-Week Moving Avg',
+              data: movingAvg,
+              borderColor: '#f59e0b',
+              borderWidth: 2,
+              borderDash: [5, 3],
+              pointRadius: 0,
+              tension: 0.4,
+              fill: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#999', font: { size: 11 } } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#666', font: { size: 11 }, maxTicksLimit: 12 } },
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#666', font: { size: 11 }, callback: v => v.toFixed(1) + '%' } },
+          }
+        }
+      });
+    }
+
+    // ─── RENDER: DIRECTORY ────────────────────────────────────
+    function renderDirectory() {
+      const tbody = document.getElementById('directoryTableBody');
+      const searchQuery = (document.getElementById('directorySearch')?.value || '').toLowerCase();
+
+      // Merge all customers + mappings
+      const entries = [];
+      const seen = new Set();
+
+      // Add all mapped customers
+      for (const [custId, mapping] of Object.entries(state.mappings)) {
+        const customer = state.customers.find(c => c.id === custId);
+        entries.push({
+          customerId: custId,
+          stripeCustomer: customer?.name || custId,
+          stripeEmail: customer?.email || '',
+          ...mapping,
+        });
+        seen.add(custId);
+      }
+
+      // Add unmapped Stripe customers
+      for (const c of state.customers) {
+        if (!seen.has(c.id)) {
+          entries.push({
+            customerId: c.id,
+            stripeCustomer: c.name || c.id,
+            stripeEmail: c.email || '',
+            studentName: '',
+            parentEmail: '',
+            parentName: '',
+            notes: '',
+            unmapped: true,
+          });
+        }
+      }
+
+      // Filter by search
+      let filtered = entries;
+      if (searchQuery) {
+        filtered = entries.filter(e =>
+          (e.stripeCustomer || '').toLowerCase().includes(searchQuery) ||
+          (e.studentName || '').toLowerCase().includes(searchQuery) ||
+          (e.parentEmail || '').toLowerCase().includes(searchQuery) ||
+          (e.parentName || '').toLowerCase().includes(searchQuery)
+        );
+      }
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-surface-400 text-sm">No entries found.</td></tr>';
+        return;
+      }
+
+      // Sort: unmapped first, then alphabetical
+      filtered.sort((a, b) => {
+        if (a.unmapped && !b.unmapped) return -1;
+        if (!a.unmapped && b.unmapped) return 1;
+        return (a.stripeCustomer || '').localeCompare(b.stripeCustomer || '');
+      });
+
+      tbody.innerHTML = filtered.map(e => `
+        <tr class="${e.unmapped ? 'opacity-60' : ''}">
+          <td class="px-4 py-3">
+            <div class="flex flex-col">
+              <span class="text-surface-200">${escapeHtml(e.stripeCustomer)}</span>
+              <span class="text-xs text-surface-400">${escapeHtml(e.stripeEmail)}</span>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-surface-100">${e.studentName ? escapeHtml(e.studentName) : '<span class="text-surface-500 italic text-xs">Not linked</span>'}</td>
+          <td class="px-4 py-3 text-surface-200 text-sm">${escapeHtml(e.parentEmail || '--')}</td>
+          <td class="px-4 py-3 text-surface-200 text-sm">${escapeHtml(e.parentName || '--')}</td>
+          <td class="px-4 py-3 text-xs text-surface-400">${escapeHtml(e.notes || '')}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            ${e.unmapped ? `
+              <button onclick="openEditMapping('${e.customerId}', '${escapeHtml(e.stripeCustomer)}', '${escapeHtml(e.stripeEmail)}')" class="btn-primary px-2.5 py-1 rounded text-xs font-semibold text-white">Link</button>
+            ` : `
+              <button onclick="openEditMapping('${e.customerId}', '${escapeHtml(e.stripeCustomer)}', '${escapeHtml(e.stripeEmail)}')" class="btn-ghost w-7 h-7 rounded inline-flex items-center justify-center text-surface-400 hover:text-white" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button onclick="deleteMapping('${e.customerId}')" class="btn-ghost w-7 h-7 rounded inline-flex items-center justify-center text-surface-400 hover:text-brand-400" title="Delete">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            `}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ─── COMMUNICATION MODAL ──────────────────────────────────
+    function openCommModal(customerId, amount, lastDate, currency = 'gbp') {
+      const mapping = state.mappings[customerId];
+      const customer = state.customers.find(c => c.id === customerId);
+      const failCount = getFailCountForCustomer(customerId);
+      const totalFailed = state.allPayments
+        .filter(p => p.customerId === customerId && p.status === 'failed')
+        .reduce((sum, p) => sum + p.amount, 0);
+
+      const studentName = mapping?.studentName || customer?.name || 'Student';
+      const parentName = mapping?.parentName || customer?.name || 'Parent/Guardian';
+      const parentEmail = mapping?.parentEmail || customer?.email || '';
+
+      // Pick template tier
+      let tierKey, tierLabel;
+      if (failCount <= 1) { tierKey = 'first_failure'; tierLabel = '1st Failure - Friendly Reminder'; }
+      else if (failCount === 2) { tierKey = 'second_failure'; tierLabel = '2nd Failure - Firm Follow-up'; }
+      else { tierKey = 'third_plus_failure'; tierLabel = `${failCount}+ Failures - Urgent Escalation`; }
+
+      const template = state.templates[tierKey];
+      const schoolName = state.settings.schoolName || '[Your School Name]';
+      const vars = {
+        '{{studentName}}': studentName,
+        '{{parentName}}': parentName,
+        '{{parentEmail}}': parentEmail,
+        '{{amount}}': formatCurrency(amount, currency),
+        '{{date}}': formatDate(lastDate),
+        '{{failCount}}': String(failCount),
+        '{{totalOwed}}': formatCurrency(totalFailed, currency),
+        '[Your School Name]': schoolName,
+      };
+
+      let subject = template.subject;
+      let body = template.body;
+      for (const [k, v] of Object.entries(vars)) {
+        subject = subject.replaceAll(k, v);
+        body = body.replaceAll(k, v);
+      }
+
+      document.getElementById('commModalContent').innerHTML = `
+        <div class="space-y-4">
+          <!-- Student Info -->
+          <div class="rounded-lg p-3" style="background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.2);">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="font-medium text-white">${escapeHtml(studentName)}</span>
+                <span class="text-xs text-surface-400 ml-2">${escapeHtml(parentEmail)}</span>
+              </div>
+              <span class="badge ${failCount >= 3 ? 'badge-critical' : failCount >= 2 ? 'badge-failed' : 'badge-warning'}">${failCount} failure${failCount !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+
+          <!-- Template Tier -->
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Template Tier</label>
+            <div class="flex gap-1">
+              <button onclick="switchCommTier('first_failure', '${customerId}', ${amount}, ${lastDate}, '${currency}')" class="px-2.5 py-1 rounded text-xs font-medium ${tierKey === 'first_failure' ? 'bg-brand-600 text-white' : 'text-surface-400 border border-surface-600'}">1st</button>
+              <button onclick="switchCommTier('second_failure', '${customerId}', ${amount}, ${lastDate}, '${currency}')" class="px-2.5 py-1 rounded text-xs font-medium ${tierKey === 'second_failure' ? 'bg-brand-600 text-white' : 'text-surface-400 border border-surface-600'}">2nd</button>
+              <button onclick="switchCommTier('third_plus_failure', '${customerId}', ${amount}, ${lastDate}, '${currency}')" class="px-2.5 py-1 rounded text-xs font-medium ${tierKey === 'third_plus_failure' ? 'bg-brand-600 text-white' : 'text-surface-400 border border-surface-600'}">3rd+</button>
+            </div>
+          </div>
+
+          <!-- Subject -->
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Subject</label>
+            <input type="text" id="commSubject" value="${escapeHtml(subject)}" class="w-full px-3 py-2 rounded-lg text-sm">
+          </div>
+
+          <!-- Body -->
+          <div>
+            <label class="block text-xs font-medium text-surface-400 mb-1">Message Body</label>
+            <textarea id="commBody" rows="12" class="w-full px-3 py-2 rounded-lg text-sm resize-y" style="background: #141414; border: 1px solid #2a2a2a; color: #e0e0e0; line-height: 1.6;">${escapeHtml(body)}</textarea>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex gap-2">
+            <button onclick="copyCommToClipboard()" class="btn-primary flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy to Clipboard
+            </button>
+            <button onclick="copyEmailOnly()" class="btn-ghost px-3 py-2.5 rounded-lg text-sm font-medium text-surface-300 border border-surface-600" title="Copy just the email address">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </button>
+          </div>
+
+          <!-- Edit Templates Link -->
+          <details class="mt-2">
+            <summary class="text-xs text-surface-400 cursor-pointer hover:text-surface-300">Edit default templates</summary>
+            <div class="mt-3 space-y-3 pt-3 border-t border-surface-600">
+              ${Object.entries(state.templates).map(([key, tmpl]) => `
+                <div>
+                  <label class="block text-xs font-medium text-surface-400 mb-1">${key === 'first_failure' ? '1st Failure' : key === 'second_failure' ? '2nd Failure' : '3rd+ Failure'} - Subject</label>
+                  <input type="text" value="${escapeHtml(tmpl.subject)}" onchange="updateTemplate('${key}', 'subject', this.value)" class="w-full px-2 py-1.5 rounded text-xs" style="background: #141414; border: 1px solid #2a2a2a; color: #e0e0e0;">
+                  <label class="block text-xs font-medium text-surface-400 mb-1 mt-1">Body</label>
+                  <textarea onchange="updateTemplate('${key}', 'body', this.value)" rows="5" class="w-full px-2 py-1.5 rounded text-xs" style="background: #141414; border: 1px solid #2a2a2a; color: #e0e0e0; line-height: 1.5;">${escapeHtml(tmpl.body)}</textarea>
+                </div>
+              `).join('')}
+              <p class="text-[10px] text-surface-500">Variables: {{studentName}}, {{parentName}}, {{parentEmail}}, {{amount}}, {{date}}, {{failCount}}, {{totalOwed}}</p>
+            </div>
+          </details>
+        </div>
+      `;
+
+      document.getElementById('commModal').classList.remove('hidden');
+    }
+
+    function switchCommTier(tierKey, customerId, amount, lastDate, currency) {
+      // Temporarily switch and re-render
+      const origTemplates = { ...state.templates };
+      openCommModal(customerId, amount, lastDate, currency);
+      // Update the tier buttons
+      const content = document.getElementById('commModalContent');
+      const buttons = content.querySelectorAll('[onclick^="switchCommTier"]');
+      buttons.forEach(btn => {
+        if (btn.getAttribute('onclick').includes(tierKey)) {
+          btn.className = 'px-2.5 py-1 rounded text-xs font-medium bg-brand-600 text-white';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded text-xs font-medium text-surface-400 border border-surface-600';
+        }
+      });
+    }
+
+    function closeCommModal() { document.getElementById('commModal').classList.add('hidden'); }
+
+    function copyCommToClipboard() {
+      const subject = document.getElementById('commSubject').value;
+      const body = document.getElementById('commBody').value;
+      navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`).then(() => showToast('Copied to clipboard'));
+    }
+
+    function copyEmailOnly() {
+      const email = document.getElementById('commModalContent').querySelector('.text-surface-400.ml-2')?.textContent || '';
+      if (email) {
+        navigator.clipboard.writeText(email).then(() => showToast('Email copied'));
+      }
+    }
+
+    function updateTemplate(key, field, value) {
+      state.templates[key][field] = value;
+      saveTemplates();
+      showToast('Template updated');
+    }
+
+    // ─── MAPPING MODAL ────────────────────────────────────────
+    function openAddMapping() {
+      state.editingMapping = null;
+      document.getElementById('mappingModalTitle').textContent = 'Add Student Mapping';
+      const select = document.getElementById('mappingCustomerId');
+      select.innerHTML = '<option value="">Select a customer...</option>' +
+        state.customers.map(c => `<option value="${c.id}">${escapeHtml(c.name || c.email || c.id)}</option>`).join('');
+      select.disabled = false;
+      document.getElementById('mappingStudentName').value = '';
+      document.getElementById('mappingParentEmail').value = '';
+      document.getElementById('mappingParentName').value = '';
+      document.getElementById('mappingNotes').value = '';
+      document.getElementById('mappingModal').classList.remove('hidden');
+    }
+
+    function openEditMapping(customerId, customerName, customerEmail) {
+      state.editingMapping = customerId;
+      const existing = state.mappings[customerId];
+      document.getElementById('mappingModalTitle').textContent = 'Edit Student Mapping';
+      const select = document.getElementById('mappingCustomerId');
+      select.innerHTML = `<option value="${customerId}">${escapeHtml(customerName || customerEmail || customerId)}</option>`;
+      select.disabled = true;
+      document.getElementById('mappingStudentName').value = existing?.studentName || '';
+      document.getElementById('mappingParentEmail').value = existing?.parentEmail || customerEmail || '';
+      document.getElementById('mappingParentName').value = existing?.parentName || customerName || '';
+      document.getElementById('mappingNotes').value = existing?.notes || '';
+      document.getElementById('mappingModal').classList.remove('hidden');
+    }
+
+    function closeMappingModal() { document.getElementById('mappingModal').classList.add('hidden'); }
+
+    function saveMapping() {
+      const custId = state.editingMapping || document.getElementById('mappingCustomerId').value;
+      if (!custId) { showToast('Please select a customer', 'error'); return; }
+
+      state.mappings[custId] = {
+        studentName: document.getElementById('mappingStudentName').value.trim(),
+        parentEmail: document.getElementById('mappingParentEmail').value.trim(),
+        parentName: document.getElementById('mappingParentName').value.trim(),
+        notes: document.getElementById('mappingNotes').value.trim(),
+        updatedAt: new Date().toISOString(),
+      };
+      saveMappings();
+      closeMappingModal();
+      renderPaymentsTable();
+      renderDirectory();
+      if (state.analytics) renderAnalytics();
+      showToast('Mapping saved');
+    }
+
+    function deleteMapping(customerId) {
+      if (!confirm('Remove this student mapping?')) return;
+      delete state.mappings[customerId];
+      saveMappings();
+      renderDirectory();
+      renderPaymentsTable();
+      showToast('Mapping removed');
+    }
+
+    function exportMappings() {
+      const data = JSON.stringify(state.mappings, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `student-mappings-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Mappings exported');
+    }
+
+    function importMappings(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          const count = Object.keys(imported).length;
+          if (confirm(`Import ${count} mappings? This will merge with existing mappings.`)) {
+            state.mappings = { ...state.mappings, ...imported };
+            saveMappings();
+            renderDirectory();
+            renderPaymentsTable();
+            showToast(`${count} mappings imported`);
+          }
+        } catch {
+          showToast('Invalid JSON file', 'error');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    // ─── TAB SWITCHING ────────────────────────────────────────
+    function switchTab(tab) {
+      ['payments', 'analytics', 'directory'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
+        document.querySelector(`[data-tab="${t}"]`).className =
+          t === tab ? 'tab-active px-4 py-2.5 text-sm font-medium cursor-pointer'
+                    : 'tab-inactive px-4 py-2.5 text-sm font-medium cursor-pointer';
+      });
+    }
+
+    // ─── FILTERS & SORT ───────────────────────────────────────
+    function filterStatus(status) {
+      state.filters.status = status;
+      document.querySelectorAll('#statusTabs button').forEach(btn => {
+        const isActive = btn.dataset.status === status;
+        btn.className = `px-3 py-1.5 text-xs font-medium ${isActive ? 'bg-surface-700 text-white' : 'text-surface-400'}`;
+      });
+      renderPaymentsTable();
+    }
+
+    function onSearchInput() {
+      state.filters.search = document.getElementById('searchInput').value;
+      renderPaymentsTable();
+    }
+
+    function sortPayments(field) {
+      if (state.sort.field === field) {
+        state.sort.dir = state.sort.dir === 'desc' ? 'asc' : 'desc';
+      } else {
+        state.sort.field = field;
+        state.sort.dir = 'desc';
+      }
+      // Update sort indicators
+      document.querySelectorAll('[id^="sort-"]').forEach(el => el.textContent = '');
+      const indicator = document.getElementById(`sort-${field}`);
+      if (indicator) indicator.innerHTML = state.sort.dir === 'desc' ? '&#9660;' : '&#9650;';
+      renderPaymentsTable();
+    }
+
+    // ─── DATE RANGE ───────────────────────────────────────────
+    document.getElementById('dateRangeTabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const range = btn.dataset.range;
+      state.filters.dateRange = range;
+
+      document.querySelectorAll('#dateRangeTabs button').forEach(b => {
+        b.className = `px-3 py-1 text-xs font-medium ${b.dataset.range === range ? 'bg-brand-600 text-white' : 'text-surface-400'}`;
+      });
+
+      document.getElementById('customDateRange').classList.toggle('hidden', range !== 'custom');
+
+      if (range !== 'custom') {
+        refreshPayments();
+      }
+    });
+
+    function applyCustomDateRange() {
+      state.filters.from = document.getElementById('dateFrom').value;
+      state.filters.to = document.getElementById('dateTo').value;
+      if (!state.filters.from || !state.filters.to) { showToast('Please select both dates', 'warning'); return; }
+      refreshPayments();
+    }
+
+    // ─── AUTO-REFRESH ─────────────────────────────────────────
+    document.getElementById('autoRefreshToggle').addEventListener('change', (e) => {
+      state.autoRefresh = e.target.checked;
+      if (state.autoRefresh) {
+        startAutoRefresh();
+      } else {
+        clearInterval(state.refreshTimer);
+      }
+    });
+
+    function startAutoRefresh() {
+      clearInterval(state.refreshTimer);
+      state.refreshTimer = setInterval(() => refreshAll(), 300000); // 5 min
+    }
+
+    // ─── DATA LOADING ─────────────────────────────────────────
+    async function refreshPayments() {
+      try {
+        state.nextCursor = null;
+        const data = await fetchPayments();
+        state.allPayments = data.payments;
+        state.nextCursor = data.nextCursor;
+        renderPaymentsTable();
+      } catch (err) {
+        console.error('Failed to load payments:', err);
+        document.getElementById('paymentsTableBody').innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-brand-400 text-sm">
+          Failed to load payments. Check your Stripe API key. <br><span class="text-xs text-surface-400">${escapeHtml(err.message)}</span>
+        </td></tr>`;
+      }
+    }
+
+    async function loadMorePayments() {
+      if (!state.nextCursor) return;
+      try {
+        const data = await fetchPayments(state.nextCursor);
+        state.allPayments.push(...data.payments);
+        state.nextCursor = data.nextCursor;
+        renderPaymentsTable();
+      } catch (err) {
+        showToast('Failed to load more payments', 'error');
+      }
+    }
+
+    async function refreshAll(silent = false) {
+      const icon = document.getElementById('refreshIcon');
+      icon.style.animation = 'spin 1s linear infinite';
+
+      const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('lastRefreshed').textContent = `Updated ${now}`;
+
+      try {
+        const [paymentsData, customersData, analyticsData] = await Promise.all([
+          fetchPayments(),
+          fetchCustomers(),
+          fetchAnalytics(),
+        ]);
+
+        state.allPayments = paymentsData.payments;
+        state.nextCursor = paymentsData.nextCursor;
+        state.customers = customersData.customers;
+        state.analytics = analyticsData;
+
+        renderSummaryCards();
+        renderUrgentPanel();
+        renderPaymentsTable();
+        renderAnalytics();
+        renderDirectory();
+      } catch (err) {
+        console.error('Refresh error:', err);
+        if (!silent) showToast('Failed to refresh data: ' + err.message, 'error');
+        throw err; // Re-throw so init() can catch and load demo
+      }
+
+      icon.style.animation = '';
+    }
+
+    // Fix auto-refresh toggle visual
+    const toggleInput = document.getElementById('autoRefreshToggle');
+    const toggleTrack = toggleInput.nextElementSibling;
+    toggleInput.addEventListener('change', () => {
+      const dot = toggleTrack.querySelector('div');
+      if (toggleInput.checked) {
+        toggleTrack.classList.add('bg-brand-600');
+        toggleTrack.classList.remove('bg-surface-600');
+        dot.style.transform = 'translateX(16px)';
+      } else {
+        toggleTrack.classList.remove('bg-brand-600');
+        toggleTrack.classList.add('bg-surface-600');
+        dot.style.transform = 'translateX(0)';
+      }
+    });
+
+    // ─── DEMO DATA (used when Stripe API is not connected) ────
+    function getDemoData() {
+      const now = Math.floor(Date.now() / 1000);
+      const day = 86400;
+      const students = [
+        { id: 'cus_demo1', name: 'Sarah Johnson', email: 'sarah.j@email.com' },
+        { id: 'cus_demo2', name: 'Marcus Williams', email: 'marcus.w@email.com' },
+        { id: 'cus_demo3', name: 'Emily Chen', email: 'emily.chen@email.com' },
+        { id: 'cus_demo4', name: 'David Brown', email: 'david.b@email.com' },
+        { id: 'cus_demo5', name: 'James Taylor', email: 'james.t@email.com' },
+        { id: 'cus_demo6', name: 'Olivia Martinez', email: 'olivia.m@email.com' },
+        { id: 'cus_demo7', name: 'Liam Patel', email: 'liam.p@email.com' },
+        { id: 'cus_demo8', name: 'Sophie Wilson', email: 'sophie.w@email.com' },
+        { id: 'cus_demo9', name: 'Noah Garcia', email: 'noah.g@email.com' },
+        { id: 'cus_demo10', name: 'Ava Thompson', email: 'ava.t@email.com' },
+        { id: 'cus_demo11', name: 'Ethan Lee', email: 'ethan.l@email.com' },
+        { id: 'cus_demo12', name: 'Mia Anderson', email: 'mia.a@email.com' },
+      ];
+
+      const payments = [];
+      const failCodes = ['card_declined', 'insufficient_funds', 'expired_card', 'generic_decline', 'authentication_required'];
+      const failMessages = ['Your card was declined.', 'Insufficient funds.', 'Your card has expired.', 'Card declined.', 'Authentication required.'];
+
+      // Generate 30 days of payments
+      for (let d = 0; d < 30; d++) {
+        for (const s of students) {
+          if (d % 30 !== 0 && Math.random() > 0.15) continue; // Not every day
+          const isFailed = (s.id === 'cus_demo2' && d < 15) || (s.id === 'cus_demo5' && d < 20) || (s.id === 'cus_demo7' && d < 10) || Math.random() < 0.06;
+          const failIdx = Math.floor(Math.random() * failCodes.length);
+          // Simulate retry data for failed payments
+          const maxRetries = 4;
+          let attemptCount = 0, retriesRemaining = 0, nextRetryDate = null;
+          if (isFailed) {
+            // Recent failures have fewer attempts, older ones have more
+            if (d <= 3) { attemptCount = 1; retriesRemaining = 3; nextRetryDate = now + (2 * day) + Math.floor(Math.random() * day); }
+            else if (d <= 8) { attemptCount = 2; retriesRemaining = 2; nextRetryDate = now + (1 * day) + Math.floor(Math.random() * day); }
+            else if (d <= 15) { attemptCount = 3; retriesRemaining = 1; nextRetryDate = now + Math.floor(Math.random() * day); }
+            else { attemptCount = 4; retriesRemaining = 0; nextRetryDate = null; } // All retries exhausted
+          }
+
+          payments.push({
+            id: `ch_demo_${d}_${s.id}`,
+            amount: [4999, 5999, 7999, 9999][Math.floor(Math.random() * 4)],
+            currency: 'gbp',
+            status: isFailed ? 'failed' : 'succeeded',
+            failureCode: isFailed ? failCodes[failIdx] : null,
+            failureMessage: isFailed ? failMessages[failIdx] : null,
+            created: now - (d * day) - Math.floor(Math.random() * day),
+            customerId: s.id,
+            customerName: s.name,
+            customerEmail: s.email,
+            description: 'Monthly Tuition',
+            paymentMethod: 'card',
+            receiptUrl: null,
+            invoiceId: isFailed ? `in_demo_${d}_${s.id}` : null,
+            invoiceStatus: isFailed ? 'open' : 'paid',
+            attemptCount: isFailed ? attemptCount : 0,
+            maxRetries,
+            retriesRemaining: isFailed ? retriesRemaining : 0,
+            nextRetryDate: isFailed ? nextRetryDate : null,
+            autoAdvance: isFailed,
+          });
+        }
+      }
+
+      payments.sort((a, b) => b.created - a.created);
+      const succeeded = payments.filter(p => p.status === 'succeeded');
+      const failed = payments.filter(p => p.status === 'failed');
+
+      // Analytics
+      const failuresByCustomer = {};
+      for (const p of failed) {
+        if (!failuresByCustomer[p.customerId]) failuresByCustomer[p.customerId] = { customerId: p.customerId, customerName: p.customerName, customerEmail: p.customerEmail, failures: [], totalFailedAmount: 0 };
+        failuresByCustomer[p.customerId].failures.push({ date: p.created, amount: p.amount, failureCode: p.failureCode });
+        failuresByCustomer[p.customerId].totalFailedAmount += p.amount;
+      }
+      const repeatOffenders = Object.values(failuresByCustomer).filter(c => c.failures.length >= 2)
+        .sort((a, b) => b.failures.length - a.failures.length)
+        .map(c => ({ ...c, failCount: c.failures.length, lastFailed: Math.max(...c.failures.map(f => f.date)), severity: c.failures.length >= 5 ? 'critical' : c.failures.length >= 3 ? 'high' : 'medium' }));
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const failuresByDay = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
+      for (const p of failed) failuresByDay[dayNames[new Date(p.created * 1000).getDay()]]++;
+
+      const monthlyTrend = [
+        { month: '2025-10', revenue: 1850000, failures: 4, total: 48, failureRate: 0.083 },
+        { month: '2025-11', revenue: 1920000, failures: 6, total: 50, failureRate: 0.12 },
+        { month: '2025-12', revenue: 2010000, failures: 3, total: 52, failureRate: 0.058 },
+        { month: '2026-01', revenue: 1780000, failures: 8, total: 49, failureRate: 0.163 },
+        { month: '2026-02', revenue: 1950000, failures: 5, total: 51, failureRate: 0.098 },
+        { month: '2026-03', revenue: 2080000, failures: 7, total: 53, failureRate: 0.132 },
+      ];
+
+      const weeklyTrend = [];
+      for (let w = 12; w >= 0; w--) {
+        const weekDate = new Date(now * 1000 - w * 7 * day * 1000);
+        weeklyTrend.push({
+          week: weekDate.toISOString().split('T')[0],
+          failureRate: 0.03 + Math.random() * 0.12,
+          failed: Math.floor(Math.random() * 5),
+          total: 30 + Math.floor(Math.random() * 20),
+        });
+      }
+
+      const failureReasons = {};
+      for (const p of failed) failureReasons[p.failureCode] = (failureReasons[p.failureCode] || 0) + 1;
+      const topFailureReasons = Object.entries(failureReasons).sort((a, b) => b[1] - a[1]).map(([reason, count]) => ({ reason, count }));
+
+      return {
+        payments: { payments: payments.slice(0, 50), hasMore: true, nextCursor: 'demo_cursor' },
+        customers: { customers: students, hasMore: false },
+        analytics: {
+          summary: {
+            totalRevenue30d: succeeded.reduce((s, p) => s + p.amount, 0),
+            totalFailed30d: failed.length,
+            failedAmount30d: failed.reduce((s, p) => s + p.amount, 0),
+            failureRate30d: payments.length > 0 ? failed.length / payments.length : 0,
+            priorFailureRate30d: 0.08,
+            failureRateTrend: (payments.length > 0 ? failed.length / payments.length : 0) - 0.08,
+            revenueAtRisk: failed.reduce((s, p) => s + p.amount, 0),
+            totalCharges30d: payments.length,
+            totalSucceeded30d: succeeded.length,
+          },
+          repeatOffenders, failuresByDay, monthlyTrend, weeklyTrend, topFailureReasons,
+        }
+      };
+    }
+
+    // ─── INIT ─────────────────────────────────────────────────
+    // Set sort indicator
+    document.getElementById('sort-created').innerHTML = '&#9660;';
+
+    // Initial load -- uses demo data if API fails
+    (async function init() {
+      try {
+        await refreshAll(true);
+        // If no payments loaded (empty Stripe or no key), fall back to demo
+        if (state.allPayments.length === 0 && !state.analytics) throw new Error('No data');
+      } catch (err) {
+        // Clear any error toasts from the failed API attempt
+        document.getElementById('toastContainer').innerHTML = '';
+        console.log('API unavailable, loading demo data for preview');
+        const demo = getDemoData();
+        state.allPayments = demo.payments.payments;
+        state.nextCursor = demo.payments.nextCursor;
+        state.customers = demo.customers.customers;
+        state.analytics = demo.analytics;
+        renderSummaryCards();
+        renderUrgentPanel();
+        renderPaymentsTable();
+        renderAnalytics();
+        renderDirectory();
+        const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('lastRefreshed').innerHTML = `Demo Mode &middot; ${now}`;
+      }
+    })();
+    startAutoRefresh();
+
+    // ─── SETTINGS ──────────────────────────────────────────────
+    function openSettingsModal() {
+      document.getElementById('settingsSchoolName').value = state.settings.schoolName;
+      document.getElementById('settingsCurrency').value = state.settings.currency;
+      document.getElementById('settingsMaxRetries').value = state.settings.maxRetries;
+      document.getElementById('settingsUrgentThreshold').value = state.settings.urgentThreshold;
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    function saveSettings() {
+      state.settings.schoolName = document.getElementById('settingsSchoolName').value.trim();
+      state.settings.currency = document.getElementById('settingsCurrency').value;
+      state.settings.maxRetries = parseInt(document.getElementById('settingsMaxRetries').value);
+      state.settings.urgentThreshold = parseInt(document.getElementById('settingsUrgentThreshold').value);
+      localStorage.setItem('stripe_dashboard_settings', JSON.stringify(state.settings));
+      applySettings();
+      closeSettingsModal();
+      renderUrgentPanel();
+      renderPaymentsTable();
+      showToast('Settings saved');
+    }
+
+    function applySettings() {
+      const title = document.getElementById('dashboardTitle');
+      if (state.settings.schoolName) {
+        title.textContent = state.settings.schoolName + ' — Payments';
+        document.title = state.settings.schoolName + ' — Payment Dashboard';
+      }
+    }
+
+    // Apply settings on load
+    applySettings();
+
+    // Keyboard shortcut: Escape closes modals
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeCommModal();
+        closeMappingModal();
+        closeSettingsModal();
+      }
+    });
+  </script>
+
+  <!-- Spin animation for refresh icon -->
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</body>
+</html>
