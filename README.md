@@ -2,9 +2,9 @@
 
 Track student tuition payments, catch failed payments early, and never miss a follow-up. Built to embed directly into Go High Level.
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/YOUR_USERNAME/stripe-payment-dashboard)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/rdbba2012-cloud/stripe-payment-dashboard)
 
-> **Replace `YOUR_USERNAME`** in the button URL above with your GitHub username after pushing this repo.
+> **Replace `rdbba2012-cloud`** in the button URL above with your GitHub username after pushing this repo.
 
 ---
 
@@ -107,7 +107,7 @@ Templates are fully editable from the dashboard.
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/stripe-payment-dashboard.git
+git clone https://github.com/rdbba2012-cloud/stripe-payment-dashboard.git
 cd stripe-payment-dashboard
 
 # Install dependencies
