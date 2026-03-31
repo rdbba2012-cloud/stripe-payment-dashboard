@@ -9,22 +9,25 @@ const headers = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-async function fetchAllCharges(since) {
+// Fetch charges in batches, with a page cap to avoid timeouts.
+// Skips customer expansion to stay fast -- customer names are resolved frontend-side.
+async function fetchCharges(since, maxPages = 10) {
   const allCharges = [];
   let hasMore = true;
   let startingAfter = undefined;
+  let pages = 0;
 
-  while (hasMore) {
+  while (hasMore && pages < maxPages) {
     const params = {
       limit: 100,
       created: { gte: since },
-      expand: ['data.customer'],
     };
     if (startingAfter) params.starting_after = startingAfter;
 
     const batch = await stripe.charges.list(params);
     allCharges.push(...batch.data);
     hasMore = batch.has_more;
+    pages++;
     if (hasMore && batch.data.length > 0) {
       startingAfter = batch.data[batch.data.length - 1].id;
     }
@@ -47,7 +50,8 @@ export async function handler(event) {
     const ninetyDaysAgo = now - (90 * 24 * 60 * 60);
     const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
 
-    const allCharges = await fetchAllCharges(ninetyDaysAgo);
+    // Fetch up to 1000 charges (10 pages x 100) without customer expansion for speed
+    const allCharges = await fetchCharges(ninetyDaysAgo, 10);
 
     const succeeded = allCharges.filter(c => c.status === 'succeeded');
     const failed = allCharges.filter(c => c.status === 'failed');
@@ -69,15 +73,16 @@ export async function handler(event) {
     const priorFailureRate = prior30d.length > 0 ? (priorFailed.length / prior30d.length) : 0;
 
     // Repeat offenders (customers with 2+ failures in 90 days)
+    // Uses customer ID only -- frontend resolves names from the customers endpoint
     const failuresByCustomer = {};
     for (const charge of failed) {
-      const custId = typeof charge.customer === 'object' ? charge.customer?.id : charge.customer;
+      const custId = charge.customer;
       if (!custId) continue;
       if (!failuresByCustomer[custId]) {
         failuresByCustomer[custId] = {
           customerId: custId,
-          customerName: typeof charge.customer === 'object' ? charge.customer?.name : null,
-          customerEmail: typeof charge.customer === 'object' ? charge.customer?.email : null,
+          customerName: null,
+          customerEmail: null,
           failures: [],
           totalFailedAmount: 0,
         };
@@ -89,6 +94,20 @@ export async function handler(event) {
         failureMessage: charge.failure_message,
       });
       failuresByCustomer[custId].totalFailedAmount += charge.amount;
+    }
+
+    // Batch-fetch customer details for offenders only (much faster than expanding all charges)
+    const offenderIds = Object.keys(failuresByCustomer);
+    const customerBatch = await Promise.all(
+      offenderIds.slice(0, 25).map(id =>
+        stripe.customers.retrieve(id).catch(() => null)
+      )
+    );
+    for (const cust of customerBatch) {
+      if (cust && failuresByCustomer[cust.id]) {
+        failuresByCustomer[cust.id].customerName = cust.name;
+        failuresByCustomer[cust.id].customerEmail = cust.email;
+      }
     }
 
     const repeatOffenders = Object.values(failuresByCustomer)
@@ -109,7 +128,7 @@ export async function handler(event) {
       failuresByDay[day]++;
     }
 
-    // Monthly revenue trend (last 12 months from 90-day data, padded)
+    // Monthly revenue trend
     const monthlyRevenue = {};
     const monthlyFailures = {};
     const monthlyTotal = {};

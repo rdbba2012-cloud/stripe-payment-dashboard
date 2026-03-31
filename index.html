@@ -1558,22 +1558,40 @@
       document.getElementById('lastRefreshed').textContent = `Updated ${now}`;
 
       try {
-        const [paymentsData, customersData, analyticsData] = await Promise.all([
+        // Fetch all three in parallel, but don't let one failure kill everything
+        const [paymentsResult, customersResult, analyticsResult] = await Promise.allSettled([
           fetchPayments(),
           fetchCustomers(),
           fetchAnalytics(),
         ]);
 
-        state.allPayments = paymentsData.payments;
-        state.nextCursor = paymentsData.nextCursor;
-        state.customers = customersData.customers;
-        state.analytics = analyticsData;
+        if (paymentsResult.status === 'fulfilled') {
+          state.allPayments = paymentsResult.value.payments;
+          state.nextCursor = paymentsResult.value.nextCursor;
+        }
+        if (customersResult.status === 'fulfilled') {
+          state.customers = customersResult.value.customers;
+        }
+        if (analyticsResult.status === 'fulfilled') {
+          state.analytics = analyticsResult.value;
+        }
 
-        renderSummaryCards();
-        renderUrgentPanel();
-        renderPaymentsTable();
-        renderAnalytics();
-        renderDirectory();
+        // If at least payments loaded, show real data
+        if (paymentsResult.status === 'fulfilled' && state.allPayments.length > 0) {
+          renderSummaryCards();
+          renderUrgentPanel();
+          renderPaymentsTable();
+          if (state.analytics) renderAnalytics();
+          renderDirectory();
+
+          // Warn if analytics failed but payments worked
+          if (analyticsResult.status === 'rejected') {
+            console.warn('Analytics failed:', analyticsResult.reason);
+            if (!silent) showToast('Analytics loading slow — charts may be incomplete', 'warning');
+          }
+        } else {
+          throw new Error(paymentsResult.reason?.message || 'No payment data returned');
+        }
       } catch (err) {
         console.error('Refresh error:', err);
         if (!silent) showToast('Failed to refresh data: ' + err.message, 'error');
